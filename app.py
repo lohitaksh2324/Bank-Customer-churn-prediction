@@ -2,7 +2,15 @@ import pandas as pd
 import numpy as np
 import joblib
 import streamlit as st
-from sklearn.metrics import confusion_matrix, accuracy_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import (
+    confusion_matrix,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+)
 
 st.set_page_config(page_title="Churn Predictor", page_icon="📊", layout="centered")
 
@@ -151,23 +159,44 @@ if file is not None:
         else:
             y_true = y_true.astype(int)
             acc = accuracy_score(y_true, preds)
+            prec = precision_score(y_true, preds, zero_division=0)
+            rec = recall_score(y_true, preds, zero_division=0)
+            f1 = f1_score(y_true, preds, zero_division=0)
             tn, fp, fn, tp = confusion_matrix(y_true, preds, labels=[0, 1]).ravel()
 
             st.subheader("Model Evaluation (using your 'Exited' column as ground truth)")
-            st.metric("Accuracy", f"{acc:.2%}")
 
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("**True Positives (TP)**", tp)
-                st.write("**True Negatives (TN)**", tn)
-            with c2:
-                st.write("**False Positives (FP)**", fp)
-                st.write("**False Negatives (FN)**", fn)
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Accuracy", f"{acc:.2%}")
+            m2.metric("Precision", f"{prec:.2%}")
+            m3.metric("Recall", f"{rec:.2%}")
+            m4.metric("F1 Score", f"{f1:.2%}")
 
-            cm_df = pd.DataFrame(
-                [[tn, fp], [fn, tp]],
-                index=["Actual: No Churn (0)", "Actual: Churn (1)"],
-                columns=["Predicted: No Churn (0)", "Predicted: Churn (1)"],
+            cm = np.array([[tn, fp], [fn, tp]])
+            fig, ax = plt.subplots(figsize=(4.5, 3.8))
+            sns.heatmap(
+                cm,
+                annot=True,
+                fmt="d",
+                cmap="Blues",
+                cbar=False,
+                xticklabels=["Predicted: No Churn", "Predicted: Churn"],
+                yticklabels=["Actual: No Churn", "Actual: Churn"],
+                ax=ax,
             )
+            ax.set_ylabel("")
+            ax.set_xlabel("")
+            ax.set_title("Confusion Matrix")
+            plt.tight_layout()
+
             st.write("**Confusion Matrix**")
-            st.dataframe(cm_df, use_container_width=True)
+            st.pyplot(fig, use_container_width=False)
+
+            with st.expander("Raw counts (TP / TN / FP / FN)"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.write("**True Positives (TP)**", tp)
+                    st.write("**True Negatives (TN)**", tn)
+                with c2:
+                    st.write("**False Positives (FP)**", fp)
+                    st.write("**False Negatives (FN)**", fn)
